@@ -1,0 +1,60 @@
+name: Build and deploy
+on:
+ push:
+ branches: [main]
+ workflow_dispatch:
+permissions:
+ id-token: write
+ contents: read
+env:
+ AWS_REGION: us-east-1
+ ECR_REPO: lab-test-a-pair1-ecr
+ ROLE_ARN: arn:aws:iam::232881763218:role/tesa-lab-gha-role
+jobs:
+ build:
+ runs-on: ubuntu-latest
+ outputs:
+ image: ${{ steps.push.outputs.image }}
+ registry: ${{ steps.ecr.outputs.registry }}
+ steps:
+ - uses: actions/checkout@v4
+ - uses: aws-actions/configure-aws-credentials@v4
+ with:
+ role-to-assume: ${{ env.ROLE_ARN }}
+ aws-region: ${{ env.AWS_REGION }}
+ - uses: aws-actions/amazon-ecr-login@v2
+ id: ecr
+ - name: Build the image and put it in ECR
+ id: push
+ run: |
+ IMAGE=${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}
+ TAG=${GITHUB_SHA::7}
+ docker build --build-arg APP_VERSION=$TAG -t $IMAGE:$TAG -t $IMAGE:latest .
+ docker push $IMAGE:$TAG
+ docker push $IMAGE:latest
+ echo "image=$IMAGE" >> $GITHUB_OUTPUT
+ deploy:
+ needs: build
+
+ if: github.event_name == 'workflow_dispatch'
+ runs-on: ubuntu-latest
+ env:
+ IMAGE: ${{ needs.build.outputs.image }}
+ REGISTRY: ${{ needs.build.outputs.registry }}
+ steps:
+ - uses: aws-actions/configure-aws-credentials@v4
+ with:
+ role-to-assume: ${{ env.ROLE_ARN }}
+ aws-region: ${{ env.AWS_REGION }}
+ - name: Tell the server to run the new image
+ run: |
+ aws ssm send-command \
+ --instance-ids ${{ vars.INSTANCE_ID }} \
+ --document-name "AWS-RunShellScript" \
+ --parameters "commands=[
+ \"aws ecr get-login-password --region $AWS_REGION | docker login -u AWS --
+password-stdin $REGISTRY\",
+ \"docker pull $IMAGE:latest\",
+ \"docker rm -f todo || true\",
+ \"docker run -d --name todo --restart always -p 80:3001 $IMAGE:latest\"
+ ]"
