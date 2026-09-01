@@ -95,7 +95,7 @@ function App() {
  headers: { 'Content-Type': 'application/json' },
  body: JSON.stringify({ title })
  })
-6
+
  setTitle('')
  loadTodos()
  }

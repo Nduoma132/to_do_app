@@ -13,7 +13,7 @@ ENV APP_VERSION=$APP_VERSION
 COPY server/package*.json ./
 RUN npm ci --omit=dev
 COPY server/ ./
-4
+
 COPY --from=build /app/client/dist /app/client/dist
 EXPOSE 3001
 CMD ["node", "server.js"]
