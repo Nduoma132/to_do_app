@@ -8,8 +8,8 @@ permissions:
  contents: read
 env:
  AWS_REGION: us-east-1
- ECR_REPO: lab-test-a-pair1-ecr
- ROLE_ARN: arn:aws:iam::232881763218:role/tesa-lab-gha-role
+ ECR_REPO: lab-test-a-pair7-ecr
+ ROLE_ARN: arn:aws:iam::232881763218:role/lab-test-a-pair7-gha-role
 jobs:
  build:
  runs-on: ubuntu-latest
